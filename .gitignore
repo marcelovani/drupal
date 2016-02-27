@@ -1,3 +1,11 @@
+.DS_Store
+.idea
+FirePHPCore
+cache/
+files/
+memcache
+opcache
+
 # Ignore configuration files that may contain sensitive information.
 sites/*/settings*.php
 
