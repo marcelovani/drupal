@@ -2130,9 +2130,23 @@ function file_download_access($uri) {
  *   'filename', and 'name' members corresponding to the matching files.
  */
 function file_scan_directory($dir, $mask, $options = array(), $depth = 0) {
+  // Allow directories specified in settings.php to be ignored. You can use this
+  // to not check for files in common special-purpose directories. For example,
+  // node_modules and bower_components. Ignoring irrelevant directories is a
+  // performance boost.
+  if (!isset($options['nomask'])) {
+    $ignore_directories = variable_get('file_scan_ignore_directories', array(
+      'node_modules',
+      'bower_components',
+    ));
+    array_walk($ignore_directories, function (&$value) {
+      $value = preg_quote($value, '/');
+    });
+    $default_nomask = '/^(\.\.?)|CVS|' . implode('|', $ignore_directories) . '$/';
+  }
+
   // Merge in defaults.
   $options += array(
-    'nomask' => '/(\.\.?|CVS)$/',
     'callback' => 0,
     'recurse' => TRUE,
     'key' => 'uri',
@@ -2143,7 +2157,10 @@ function file_scan_directory($dir, $mask, $options = array(), $depth = 0) {
   $files = array();
   if (is_dir($dir) && $handle = opendir($dir)) {
     while (FALSE !== ($filename = readdir($handle))) {
-      if (!preg_match($options['nomask'], $filename) && $filename[0] != '.') {
+      if ($filename[0] != '.'
+          && !(isset($options['nomask']) && preg_match($options['nomask'], $filename))
+          && !(!empty($default_nomask) && preg_match($default_nomask, $filename))
+          ) {
         $uri = "$dir/$filename";
         $uri = file_stream_wrapper_uri_normalize($uri);
         if (is_dir($uri) && $options['recurse']) {
